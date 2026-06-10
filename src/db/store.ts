@@ -13,6 +13,7 @@ import {
   SEED_PROFILES, SEED_CLIENTS, SEED_TASKS, SEED_PAYMENTS, 
   SEED_RECEIVABLES, SEED_LIABILITIES 
 } from './initialData';
+import { supabase, toCamelCase, toSnakeCase } from '../lib/supabase';
 
 // Constants for Local Storage Keys
 const KEYS = {
@@ -93,36 +94,69 @@ export class GTMSDatabase {
     this.presets = loadOrSeed(KEYS.PRESETS, this.getInitialPresets());
     this.pdfLogs = loadOrSeed(KEYS.PDF_LOGS, []);
 
-    // Add demo assets if empty
-    if (this.letterheads.length === 0) {
-      this.letterheads.push({
-        id: 'lh-demo-en',
-        name: 'Globalize English Letterhead',
-        imageUrl: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?auto=format&fit=crop&q=80&w=1000',
-        isDefault: true,
-        placement: 'background',
-        margins: { top: 20, bottom: 20, left: 20, right: 20 },
-        opacity: 1,
-        createdAt: new Date().toISOString()
-      });
-    }
-    if (this.stamps.length === 0) {
-      this.stamps.push({
-        id: 'st-demo-cert',
-        name: 'Official Certified Stamp',
-        type: 'certified_stamp_signature',
-        imageUrl: 'https://img.freepik.com/premium-vector/certified-stamp-vector-illustration-isolated-white-background_1080470-3626.jpg',
-        defaultSize: 150,
-        defaultOpacity: 1,
-        defaultRotation: -2,
-        createdAt: new Date().toISOString()
-      });
-    }
-
     this.currentRole = (localStorage.getItem(KEYS.CURRENT_ROLE) as UserRole) || 'owner';
     
     // Set active profile based on selection
     this.activeProfile = this.profiles.find(p => p.role === this.currentRole) || this.profiles[0];
+
+    // Initialize synchronization with Supabase
+    this.syncWithSupabase();
+  }
+
+  async syncWithSupabase() {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase credentials not found. Operating in offline/localStorage mode.');
+      return;
+    }
+
+    try {
+      console.log('🔄 Syncing GTMS Database with Supabase...');
+      const [
+        profilesRes, clientsRes, tasksRes, assignmentsRes, quotationsRes,
+        paymentsRes, receivablesRes, liabilitiesRes, closingsRes,
+        attendanceRes, notificationsRes, letterheadsRes, stampsRes,
+        presetsRes, pdfLogsRes
+      ] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('clients').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('task_assignments').select('*'),
+        supabase.from('quotations').select('*'),
+        supabase.from('payments').select('*'),
+        supabase.from('client_receivables').select('*'),
+        supabase.from('staff_liabilities').select('*'),
+        supabase.from('monthly_closings').select('*'),
+        supabase.from('salary_attendance').select('*'),
+        supabase.from('notifications').select('*'),
+        supabase.from('letterhead_templates').select('*'),
+        supabase.from('stamp_assets').select('*'),
+        supabase.from('layout_presets').select('*'),
+        supabase.from('pdf_export_logs').select('*')
+      ]);
+
+      if (profilesRes.data) this.profiles = toCamelCase(profilesRes.data);
+      if (clientsRes.data) this.clients = toCamelCase(clientsRes.data);
+      if (tasksRes.data) this.tasks = toCamelCase(tasksRes.data);
+      if (assignmentsRes.data) this.assignments = toCamelCase(assignmentsRes.data);
+      if (quotationsRes.data) this.quotations = toCamelCase(quotationsRes.data);
+      if (paymentsRes.data) this.payments = toCamelCase(paymentsRes.data);
+      if (receivablesRes.data) this.receivables = toCamelCase(receivablesRes.data);
+      if (liabilitiesRes.data) this.liabilities = toCamelCase(liabilitiesRes.data);
+      if (closingsRes.data) this.closings = toCamelCase(closingsRes.data);
+      if (attendanceRes.data) this.attendance = toCamelCase(attendanceRes.data);
+      if (notificationsRes.data) this.notifications = toCamelCase(notificationsRes.data);
+      if (letterheadsRes.data) this.letterheads = toCamelCase(letterheadsRes.data);
+      if (stampsRes.data) this.stamps = toCamelCase(stampsRes.data);
+      if (presetsRes.data) this.presets = toCamelCase(presetsRes.data);
+      if (pdfLogsRes.data) this.pdfLogs = toCamelCase(pdfLogsRes.data);
+
+      console.log('✅ GTMS Database successfully synced from Supabase.');
+      this.saveLocally();
+    } catch (err) {
+      console.error('❌ Failed to sync from Supabase:', err);
+    }
   }
 
   // Initial seed structures
@@ -177,7 +211,7 @@ export class GTMSDatabase {
   }
 
   // Save changes back to Local Storage
-  save() {
+  saveLocally() {
     localStorage.setItem(KEYS.PROFILES, JSON.stringify(this.profiles));
     localStorage.setItem(KEYS.CLIENTS, JSON.stringify(this.clients));
     localStorage.setItem(KEYS.TASKS, JSON.stringify(this.tasks));
@@ -197,6 +231,43 @@ export class GTMSDatabase {
     
     // Trigger React listeners
     this.listeners.forEach(listen => listen());
+  }
+
+  save() {
+    this.saveLocally();
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    if (!supabaseUrl || !supabaseAnonKey) return;
+
+    const syncTable = async (tableName: string, data: any[]) => {
+      try {
+        if (data.length === 0) return;
+        const snakeData = toSnakeCase(data);
+        const { error } = await supabase.from(tableName).upsert(snakeData);
+        if (error) {
+          console.error(`Error syncing ${tableName} to Supabase:`, error);
+        }
+      } catch (err) {
+        console.error(`Failed to sync ${tableName} to Supabase:`, err);
+      }
+    };
+
+    syncTable('profiles', this.profiles);
+    syncTable('clients', this.clients);
+    syncTable('tasks', this.tasks);
+    syncTable('task_assignments', this.assignments);
+    syncTable('quotations', this.quotations);
+    syncTable('payments', this.payments);
+    syncTable('client_receivables', this.receivables);
+    syncTable('staff_liabilities', this.liabilities);
+    syncTable('monthly_closings', this.closings);
+    syncTable('salary_attendance', this.attendance);
+    syncTable('notifications', this.notifications);
+    syncTable('letterhead_templates', this.letterheads);
+    syncTable('stamp_assets', this.stamps);
+    syncTable('layout_presets', this.presets);
+    syncTable('pdf_export_logs', this.pdfLogs);
   }
 
   resetToSeeds() {
@@ -567,6 +638,15 @@ export class GTMSDatabase {
       // Remove the declined assignment
       this.assignments = this.assignments.filter(a => a.id !== assignmentId);
       
+      // Delete from Supabase if credentials exist
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+      if (supabaseUrl && supabaseAnonKey) {
+        supabase.from('task_assignments').delete().eq('id', assignmentId).then(({ error }) => {
+          if (error) console.error('Error deleting assignment:', error);
+        });
+      }
+
       // Update task costs and status
       const task = this.tasks.find(t => t.id === taskId);
       if (task) {
@@ -863,7 +943,7 @@ export class GTMSDatabase {
     const partnerShare = netProfitEgp / 2;
 
     const newClosing: MonthlyClosing = {
-      id: `cls-${Date.now()}`,
+      id: existing ? existing.id : `cls-${Date.now()}`,
       period,
       totalRevenueEgp,
       totalRevenueAed,

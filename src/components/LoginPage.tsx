@@ -72,30 +72,6 @@ export default function LoginPage({ onSuccessLogin, isRtl, onToggleRtl }: LoginP
     }, 800);
   };
 
-  const handleQuickLogin = (user: Profile) => {
-    if (!user.isActive) {
-      alert(isRtl 
-        ? 'عذراً، هذا الحساب معطل حالياً في دليل المستخدمين!' 
-        : 'Cannot log in. This profile is suspended in the directory!');
-      return;
-    }
-    onSuccessLogin(user);
-  };
-
-  // Pre-fetch some seed demo users for instant dashboard toggle
-  const getDemoUsers = () => {
-    // Let's pull Ahmed (owner), Nada (admin), Samar (sales), Mostafa (accountant), Shaima (translator)
-    return dbInstance.profiles.filter(p => 
-      p.id === 'p-ahmed-ghaffar' || 
-      p.id === 'p-nada' || 
-      p.id === 'p-acc-mostafa' || 
-      p.id === 'p-sales-samar' || 
-      p.id === 'p-shaima'
-    );
-  };
-
-  const demoUsers = getDemoUsers();
-
   return (
     <div className={`min-h-screen bg-zinc-50/50 flex flex-col justify-between font-sans text-zinc-800 ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
       
@@ -119,7 +95,7 @@ export default function LoginPage({ onSuccessLogin, isRtl, onToggleRtl }: LoginP
 
       {/* MAIN CONTAINER */}
       <main className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-white rounded-2xl border border-zinc-200/80 shadow-lg overflow-hidden animate-fade-in">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-200/80 shadow-lg overflow-hidden animate-fade-in">
           
           {/* CREDENTIALS LOGIN FORM */}
           <div className="p-8 md:p-10 space-y-6 flex flex-col justify-center">
@@ -193,69 +169,11 @@ export default function LoginPage({ onSuccessLogin, isRtl, onToggleRtl }: LoginP
               <span className="font-semibold text-zinc-850 block">{isRtl ? 'ملاحظة الفحص والأمن' : 'Security and Audit Note'}</span>
               <p className="text-zinc-400 mt-0.5">
                 {isRtl 
-                  ? 'تم تشفير جميع القيود وكلمات المرور وتخزينها محلياً. كلمة المرور الافتراضية لجميع الموظفين هي "password123".' 
-                  : 'All passwords and entries are stored locally. The initial default password for all seeded accounts is "password123".'}
+                  ? 'تم تشفير جميع القيود وكلمات المرور وتخزينها سحابياً بشكل آمن.' 
+                  : 'All passwords and entries are stored securely in the remote database.'}
               </p>
             </div>
           </div>
-
-          {/* QUICK DEMO ROLE SWITCHING SECTOR (LUXURIOUS DESIGN) */}
-          <div className="bg-zinc-50 border-t md:border-t-0 md:border-l border-zinc-200/80 p-8 md:p-10 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                <Sparkles size={13} className="text-zinc-700 font-black" />
-                <span>{isRtl ? 'اختبار الصلاحيات السريع' : 'System Evaluation Node'}</span>
-              </div>
-              <h3 className="text-base font-bold text-zinc-900">{isRtl ? 'تسجيل دخول سريع للتجربة' : 'Quick Access Demo Accounts'}</h3>
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
-                {isRtl 
-                  ? 'اختر أي حساب بنقرة واحدة لاختبار تجربة لوحات التحكم المتباينة ومستويات ومصفوفة الصلاحيات والحماية:' 
-                  : 'Click on any predefined office profile below to log in instantly. This lets you inspect different dashboard scopes, capabilities, and system restriction guards without manual typing:'}
-              </p>
-            </div>
-
-            <div className="space-y-2 mt-6">
-              {demoUsers.map(user => {
-                const badgeColor = 
-                  user.role === 'owner' ? 'bg-zinc-950 text-white' :
-                  user.role === 'admin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                  user.role === 'accountant' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                  user.role === 'sales' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
-                  'bg-amber-50 text-amber-700 border-amber-200';
-
-                return (
-                  <button
-                    key={user.id}
-                    onClick={() => handleQuickLogin(user)}
-                    className="w-full p-2.5 bg-white hover:bg-zinc-100 hover:border-zinc-350 border border-zinc-205 rounded-xl flex items-center justify-between text-left transition-all cursor-pointer font-sans shadow-sm active:scale-98 group"
-                  >
-                    <div className="flex items-center gap-2.5 max-w-[80%]">
-                      <div className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center text-white text-[9px] font-bold uppercase">
-                        {user.fullName[0]}
-                      </div>
-                      <div className="leading-tight truncate">
-                        <span className="text-xs font-bold text-zinc-900 group-hover:underline">
-                          {isRtl ? user.fullNameAr : user.fullName}
-                        </span>
-                        <p className="text-[9px] text-zinc-400 mt-0.5 truncate">{user.phone}</p>
-                      </div>
-                    </div>
-                    
-                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider font-mono shrink-0 border border-transparent ${badgeColor}`}>
-                      {user.role}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="text-[9px] text-zinc-400 mt-6 text-center">
-              {isRtl 
-                ? 'نظام الترجمة والمحاسبة والتوثيق المعتمد • براءة اختراع v2.6' 
-                : 'Accredited Bureaus Administration & Accounting Ledger • Proprietary v2.6'}
-            </div>
-          </div>
-
         </div>
       </main>
 

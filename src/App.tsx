@@ -228,25 +228,9 @@ export default function App() {
               </span>
             </div>
             
-            {/* If owner/admin, let them impersonate other roles as an administrative test power */}
-            {(sessionUser.role === 'owner' || sessionUser.role === 'admin') ? (
-              <select
-                value={currentRole}
-                onChange={e => handleRoleChange(e.target.value as UserRole)}
-                className="bg-zinc-100 hover:bg-zinc-200 font-bold text-zinc-700 focus:outline-none border border-zinc-250 py-0.5 px-1.5 text-[10px] rounded-md cursor-pointer transition-all"
-                title={isRtl ? 'تبديل مظهر محاكاة الأدوار' : 'Impersonate view (Demo system)'}
-              >
-                <option value="owner">Owner Ahmed</option>
-                <option value="accountant">Accountant</option>
-                <option value="sales">Sales Executive</option>
-                <option value="translator">Translator (Shaima)</option>
-                <option value="admin">Bureau Admin</option>
-              </select>
-            ) : (
-              <span className="px-2 py-0.5 text-[9px] uppercase font-bold bg-zinc-900 text-white rounded border border-transparent font-mono">
-                {currentRole}
-              </span>
-            )}
+            <span className="px-2 py-0.5 text-[9px] uppercase font-bold bg-zinc-900 text-white rounded border border-transparent font-mono">
+              {currentRole}
+            </span>
 
             {/* Logout Trigger */}
             <button
