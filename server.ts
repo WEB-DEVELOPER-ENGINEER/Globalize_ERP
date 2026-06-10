@@ -11,6 +11,17 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Request logging middleware
+  app.use((req, res, next) => {
+    console.log(`[HTTP] ${req.method} ${req.url}`);
+    next();
+  });
+
+  // Health check endpoint
+  app.get("/health", (req, res) => {
+    res.status(200).send("OK");
+  });
+
   // API Route for sending automated emails
   app.post("/api/send-email", async (req, res) => {
     const { to, subject, text, html } = req.body;
