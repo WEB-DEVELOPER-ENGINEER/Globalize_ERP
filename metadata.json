@@ -1,0 +1,6 @@
+{
+  "name": "Globalize System",
+  "description": "Comprehensive Translation Management System (TMS) with role-based dashboards, task tracking, multi-currency accounting, client receivables, and monthly closing statements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
